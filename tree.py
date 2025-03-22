@@ -5,7 +5,14 @@ from jinja2 import Template
 
 
 def generate_tree(
-    root_path, show_hidden=False, max_depth=None, current_depth=0, prefix="", is_last=False, is_root=True
+    root_path,
+    show_hidden=False,
+    max_depth=None,
+    current_depth=0,
+    prefix="",
+    is_last=False,
+    is_root=True,
+    sort_by="name",
 ):
     """生成目录树结构的核心函数"""
     lines = []
@@ -35,8 +42,12 @@ def generate_tree(
     if not show_hidden:
         entries = [e for e in entries if not e.startswith(".")]
 
-    # 排序处理：目录在前，文件在后，均按字母排序
-    entries.sort(key=lambda x: x.lower())
+    # 排序处理
+    if sort_by == "name":
+        entries.sort(key=lambda x: x.lower())
+    elif sort_by == "type":
+        entries.sort(key=lambda x: (os.path.isdir(os.path.join(root_path, x)), x.lower()))
+
     dirs = [e for e in entries if os.path.isdir(os.path.join(root_path, e))]
     files = [e for e in entries if not os.path.isdir(os.path.join(root_path, e))]
     sorted_entries = dirs + files
@@ -62,6 +73,7 @@ def generate_tree(
                 prefix=prefix + extension,
                 is_last=is_last_entry,
                 is_root=False,
+                sort_by=sort_by,
             )
             lines.extend(sub_lines)
             dir_count += sub_dirs
@@ -80,6 +92,9 @@ def main():
     parser.add_argument("-d", "--max-depth", type=int, help="设置遍历深度限制")
     parser.add_argument("-o", "--output", help="输出到指定文件")
     parser.add_argument("-t", "--template", help="根据模板输出到指定文件")
+    parser.add_argument(
+        "-s", "--sort", choices=["name", "type"], default="name", help="排序方式：按名称或类型"
+    )
 
     args = parser.parse_args()
 
@@ -90,7 +105,7 @@ def main():
 
     # 生成目录树
     tree_lines, dir_count, file_count = generate_tree(
-        args.directory, show_hidden=args.all, max_depth=args.max_depth
+        args.directory, show_hidden=args.all, max_depth=args.max_depth, sort_by=args.sort
     )
 
     output = "\n".join(tree_lines)
